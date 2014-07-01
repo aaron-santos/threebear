@@ -1,3 +1,4 @@
+var https = require('https');
 var express = require('express');
 var logfmt = require('logfmt');
 var pg = require('pg');
@@ -29,6 +30,10 @@ pg.connect(process.env.DATABASE_URL, function(err, client) {
     // Serve static content from the ./public directory
     app.use(express.static('public'));
 
+    app.get('/clientid', function(req, res) {
+        res.send(process.env.CLIENT_ID);
+    });
+
     // API entry point
     app.get('/arena', function(req, res) {
         console.log('Got request for /arena');
@@ -42,6 +47,25 @@ pg.connect(process.env.DATABASE_URL, function(err, client) {
                 }
             }
         );
+    });
+
+    app.get('/arena/me', function(req, res) {
+        var accessToken = req.query.accessToken;
+        https.get('https://www.googleapis.com/plus/v1/people/me/?fields=displayName%2Cid%2Cimage&access_token=' + accessToken, function(gRes){
+            var body = '';
+            gRes.on('data', function(chunk) {
+                body += chunk;
+            });
+            gRes.on('end', function() {
+                var jsonBody = JSON.parse(body);
+                console.log('got me results: ' + body);
+                
+                res.send({
+                    "name": jsonBody.displayName,
+                    "imageUrl": jsonBody.image.url
+                });
+            });
+        });
     });
 
     // Inivitations collection
