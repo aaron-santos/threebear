@@ -1,9 +1,7 @@
-
-
-/* ==========================================================================
-   Author's custom styles
-   ========================================================================== */
-
+.jumbotron {
+    background: url('/img/jumbotron-background.jpg') repeat scroll 0% 0% / 100% auto transparent;
+    color: antiquewhite;
+}
 
 
 

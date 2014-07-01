@@ -6,6 +6,7 @@ function signinCallback(authResult) {
     // Set accessToken globally
     accessToken = authResult['access_token'];
     showUserNameAndAvatar();
+    showMainPage();
   } else {
     // Update the app to reflect a signed out user
     // Possible error values:
@@ -33,6 +34,10 @@ function showUserNameAndAvatar() {
     });
 }
 
+function showMainPage() {
+    
+}
+
 $(function() {
     // Create Google+ Signin button
     $.get('/clientid', function(clientId) {
@@ -46,9 +51,11 @@ $(function() {
           .attr('data-scope', 'https://www.googleapis.com/auth/plus.login')
       .appendTo('#signinButton');
   
-      var po = document.createElement('script'); po.type = 'text/javascript'; po.async = true;
+      var po = document.createElement('script');
+      po.type = 'text/javascript';
+      po.async = true;
       po.src = 'https://apis.google.com/js/client:plusone.js';
-      var s = document.getElementsByTagName('script')[0]; s.parentNode.insertBefore(po, s);
+      var s = document.getElementsByTagName('script')[0];
+      s.parentNode.insertBefore(po, s);
     });
-
 });
