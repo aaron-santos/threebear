@@ -1,6 +1,6 @@
 CREATE TABLE invitations (
     id uuid PRIMARY KEY,
-    statedate date NOT NULL,
+    startdate date NOT NULL,
     enddate date NOT NULL,
     numplayers int NOT NULL,
     CHECK (startdate < enddate)
