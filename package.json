@@ -1,0 +1,22 @@
+{
+  "name": "threebear",
+  "version": "0.0.0",
+  "description": "threebear =========",
+  "main": "web.js",
+  "scripts": {
+    "test": "test"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git://github.com/aaron-santos/threebear.git"
+  },
+  "author": "",
+  "license": "GPLv3",
+  "bugs": {
+    "url": "https://github.com/aaron-santos/threebear/issues"
+  },
+  "dependencies": {
+    "logfmt": "~1.1.2",
+    "express": "~4.4.5"
+  }
+}
