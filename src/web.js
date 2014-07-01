@@ -26,6 +26,9 @@ pg.connect(process.env.DATABASE_URL, function(err, client) {
     console.log('Connected to database');
     var db = new Db(client);
 
+    // Serve static content from the ./public directory
+    app.use(express.static('public'));
+
     // API entry point
     app.get('/arena', function(req, res) {
         console.log('Got request for /arena');
