@@ -14,9 +14,15 @@ app.listen(port, function() {
     console.log("Listening on " + port);
 });
 
+console.log('Connecting to database with DATABASE_URL ['
+    + process.env.DATABASE_URL + ']');
 
 pg.connect(process.env.DATABASE_URL, function(err, client) {
-    var query = client.query('SELECT * FROM your_table');
+    if (err != null) {
+      console.log(err);
+      return;
+    }
+    var query = client.query('SELECT * FROM invitations');
     query.on('row', function(row) {
           console.log(JSON.stringify(row));
     });
