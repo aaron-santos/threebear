@@ -3,7 +3,13 @@
     color: antiquewhite;
 }
 
+#newInvitation {
+    display: none;
+}
 
+#game {
+    display: none;
+}
 
 
 

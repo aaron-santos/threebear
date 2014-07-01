@@ -14,11 +14,6 @@ app.use(logfmt.requestLogger());
 console.log('Connecting to database with DATABASE_URL ['
     + process.env.DATABASE_URL + ']');
 
-//app.get('/arena', function(req, res) {
-//    console.log('Got request for /arena');
-//    res.send('Hello World!');
-//});
-
 pg.connect(process.env.DATABASE_URL, function(err, client) {
     if (err != null) {
       console.log(err);
@@ -43,7 +38,8 @@ pg.connect(process.env.DATABASE_URL, function(err, client) {
                     "self": {"href": "/arena"},
                     "games": {"href": "/arena/games"},
                     "invitations": {"href": "/arena/invitations"},
-                    "friends": {"href": "/arena/friends"}
+                    "friends": {"href": "/arena/friends"},
+                    "me": {"href": "/arena/me"}
                 }
             }
         );
@@ -67,6 +63,31 @@ pg.connect(process.env.DATABASE_URL, function(err, client) {
             });
         });
     });
+
+    app.get('/arena/friends', function(req, res) {
+        var accessToken = req.query.accessToken;
+        https.get('https://www.googleapis.com/plus/v1/people/me/people/visible/?access_token=' + accessToken, function(gRes){
+            var body = '';
+            gRes.on('data', function(chunk) {
+                body += chunk;
+            });
+            gRes.on('end', function() {
+                var jsonBody = JSON.parse(body);
+                console.log('got me results: ' + body);
+                
+                res.send({
+                    "users": _.map(jsonBody.items, function(user) {
+                        return {
+                            "@id": user.id,
+                            "name": user.displayName,
+                            "imageUrl": user.image.url
+                        };
+                    })
+                });
+            });
+        });
+    });
+
 
     // Inivitations collection
     app.get('/arena/invitations', function(req, res) {

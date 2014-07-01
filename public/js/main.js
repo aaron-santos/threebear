@@ -4,7 +4,7 @@ function signinCallback(authResult) {
     // Hide the sign-in button now that the user is authorized, for example:
     document.getElementById('signinButton').setAttribute('style', 'display: none');
     // Set accessToken globally
-    accessToken = authResult['access_token'];
+    window.accessToken = authResult['access_token'];
     showUserNameAndAvatar();
     showMainPage();
   } else {
@@ -57,5 +57,20 @@ $(function() {
       po.src = 'https://apis.google.com/js/client:plusone.js';
       var s = document.getElementsByTagName('script')[0];
       s.parentNode.insertBefore(po, s);
+    });
+
+    // Wire up buttons
+    $('#newInvitationBtn').click(function() {
+        var $invitationUsers = $('#invitationUsers');
+        $.getJSON('/arena/friends?accessToken=' + accessToken, function(users) {
+             _.map(users.users, function(user) {
+                 $('<li>')
+                    .text(user.name)
+                    .append('<img src="' + user.imageUrl + '" />')
+                    .appendTo($invitationUsers);
+             });
+            $('#inviteAndPlay').hide();
+            $('#newInvitation').show();
+        });
     });
 });
