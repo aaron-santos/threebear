@@ -1,4 +1,4 @@
-threebear
+Threebear
 =========
 
 Some kind of terraforming game
@@ -15,7 +15,7 @@ You might need to configure a postgres user
 
 See https://help.ubuntu.com/community/PostgreSQL#Basic_Server_Setup
 
-Have heroku tools installed or follow the guide at
+If you want to use foreman, have heroku tools installed or follow the guide at
 
 https://devcenter.heroku.com/articles/getting-started-with-nodejs
 
@@ -37,7 +37,11 @@ Edit YOURUSER:YOURPASSWORD to match those that you configured earlier.
 
 `export DATABASE_URL=postgres://YOURUSER:YOURPASSWORD@localhost/threebear`
 
-Start the application.
+Start the application
+
+`node src/web.js`
+
+Or use Heroku's foreman to start it
 
 `foreman start`
 
