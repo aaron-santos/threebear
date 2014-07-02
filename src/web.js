@@ -1,5 +1,6 @@
 var https = require('https');
 var express = require('express');
+var bodyParser = require('body-parser');
 var logfmt = require('logfmt');
 var pg = require('pg');
 var _ = require('underscore');
@@ -10,9 +11,28 @@ var Db = require('./db');
 var app = express();
 
 app.use(logfmt.requestLogger());
+app.use(bodyParser.json());
 
 console.log('Connecting to database with DATABASE_URL ['
     + process.env.DATABASE_URL + ']');
+
+function getCurrentUserId(accessToken, callback /*(err, id)*/) {
+    https.get('https://www.googleapis.com/plus/v1/people/me/?fields=id&access_token=' + accessToken, function(gRes){
+        var body = '';
+        gRes.on('data', function(chunk) {
+            body += chunk;
+        });
+        gRes.on('end', function() {
+            var jsonBody = JSON.parse(body);
+            console.log('got me results: ' + body);
+            
+            callback(null, jsonBody.id);
+        });
+        gRes.on('error', function(err) {
+            callback(err, null);
+        });
+    });
+}
 
 pg.connect(process.env.DATABASE_URL, function(err, client) {
     if (err != null) {
@@ -91,6 +111,7 @@ pg.connect(process.env.DATABASE_URL, function(err, client) {
 
     // Inivitations collection
     app.get('/arena/invitations', function(req, res) {
+        var accessToken = req.query.accessToken;
         db.getInvitations('113479285279093781959', function(err, results) {
             if (err != null) {
                 console.log(err);
@@ -102,6 +123,22 @@ pg.connect(process.env.DATABASE_URL, function(err, client) {
                     "invitations": results
                 }
             );
+        });
+    });
+
+    // Accept new invitations
+    app.post('/arena/invitations/create', function(req, res) {
+        var accessToken = req.query.accessToken;
+        getCurrentUserId(accessToken, function(err, id) {
+            console.log('Got request body ' + JSON.stringify(req.body));
+            db.createInvitation(req.body, function(err) {
+                if (err != null) {
+                    console.log(err);
+                    res.send(500, err);
+                } else {
+                    res.send(201, '');
+                }
+            });
         });
     });
 });

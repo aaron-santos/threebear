@@ -1,5 +1,7 @@
+CREATE EXTENSION "uuid-ossp";
+
 CREATE TABLE invitations (
-    id uuid PRIMARY KEY,
+    id uuid PRIMARY KEY DEFAULT uuid_generate_v4(),
     startdate date NOT NULL,
     enddate date NOT NULL,
     numplayers int NOT NULL,
@@ -14,7 +16,7 @@ CREATE TABLE invitationusers (
 );
 
 CREATE TABLE games (
-    id uuid PRIMARY KEY,
+    id uuid PRIMARY KEY DEFAULT uuid_generate_v4(),
     statedate date NOT NULL,
     data JSON NOT NULL
 );

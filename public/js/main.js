@@ -65,12 +65,37 @@ $(function() {
         $.getJSON('/arena/friends?accessToken=' + accessToken, function(users) {
              _.map(users.users, function(user) {
                  $('<li>')
-                    .text(user.name)
+                    .data('userId', user['@id'])
                     .append('<img src="' + user.imageUrl + '" />')
+                    .append($('<div>').text(user.name))
                     .appendTo($invitationUsers);
              });
+            $invitationUsers
+                .bind('mousedown', function(e) {
+                    e.metaKey = true;
+                })
+                .selectable();
+            $('#numPlayers').selectmenu();
             $('#inviteAndPlay').hide();
             $('#newInvitation').show();
+        });
+    });
+
+    $('#sendInvitationBtn').click(function() {
+        var userIds = _.map($('#invitationUsers').children('.ui-selected'), function(li) {
+            return $(li).data('userId');
+        });
+        console.log('selected user ids [' + userIds + ']');
+        $.ajax({
+            type: 'POST',
+            url: '/arena/invitations/create',
+            data: JSON.stringify ({
+              "num-players": parseInt($('#numPlayers').val()),
+              "user-ids": userIds
+            }),
+            success: function(data) { alert('data: ' + data); },
+            contentType: "application/json",
+            dataType: 'json'
         });
     });
 });

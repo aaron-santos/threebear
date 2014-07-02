@@ -7,9 +7,9 @@ Some kind of terraforming game
 
 Install and run Postgresql 9.3.
 
-Install Postgresql developerment packages.
+Install Postgresql developement and contrib packages.
 
-`sudo apt-get install postgresql-server-dev-9.3`
+`sudo apt-get install postgresql-server-dev-9.3 postgresql-contrib-9.3`
 
 You might need to configure a postgres user.
 
