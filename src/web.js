@@ -50,27 +50,7 @@ function getCurrentUserId(accessToken, callback /*(err, id)*/) {
     });
 }
 
-
-function getAccessToken(oauth2Client, callback) {
-  // generate consent page url
-  var url = oauth2Client.generateAuthUrl({
-    access_type: 'offline', // will return a refresh token
-    scope: 'https://www.googleapis.com/auth/plus.me'
-  });
-
-  console.log('Visit the url: ', url);
-  rl.question('Enter the code here:', function(code) {
-    // request access token
-    oauth2Client.getToken(code, function(err, tokens) {
-      // set tokens to the client
-      // TODO: tokens should be set by OAuth2 client.
-      oauth2Client.setCredentials(tokens);
-      callback();
-    });
-  });
-}
-
-function getFriends(userId, callback /*(err, friends)*/) {
+function getFriends(accessToken, userId, callback /*(err, friends)*/) {
     googleapis
     .discover('plus', 'v1')
     .execute(function(err, client) {
@@ -78,14 +58,16 @@ function getFriends(userId, callback /*(err, friends)*/) {
                 process.env.CLIENT_ID,
                 process.env.CLIENT_SECRET,
                 process.env.REDIRECT_URL);
-        getAccessToken(oauth2Client, function() {
+        oauth2Client.setCredentials({access_token: accessToken});
+        //getAccessToken(oauth2Client, function() {
+            console.log('Getting friends accessToken:' + accessToken + ' userId:' + userId);
             client.plus.people.list({
                 userId: userId,
                 collection: 'visible'
             })
             .withAuthClient(oauth2Client)
             .execute(callback);
-        });
+        //});
     });
 }
 
@@ -147,8 +129,9 @@ app.get('/arena/me', function(req, res) {
 
 app.get('/arena/friends', function(req, res) {
     var accessToken = req.query.accessToken;
-    getCurrentUserId(accessToken, function(userId) {
-        getFriends(userId, function(friends) {
+    getCurrentUserId(accessToken, function(err, userId) {
+        getFriends(accessToken, userId, function(err, friends) {
+            console.log('Got friends ' + JSON.stringify(friends));
             res.send({
                 "users": _.map(friends.items, function(user) {
                     return {
@@ -186,7 +169,14 @@ app.get('/arena/invitations', function(req, res) {
         function(err, results) {
             handleErrorFn(res)(err, results, function() {
                 res.send({
-                        "invitations": results
+                    "invitations": _.map(results, function(invitation) {
+                        return {
+                            "startDate": invitation.startdate,
+                            "endDate": invitation.enddate,
+                            "numPlayers": invitation.numplayers,
+                            "accepted": invitation.accepted
+                        };
+                    })
                 });
             });
         }

@@ -40,12 +40,14 @@ function showMainPage() {
         var $invitationList = $('#invitationList');
         _.each(invitations.invitations, function(invitation) {
             $('<div>')
-                .text(invitation.startDate
-                    + ' '
-                    + invitation.endDate
-                    + ' '
+                .text(
+                    'Created: '
+                    + (new Date(invitation.startDate).toLocaleDateString())
+                    + ' Ending: '
+                    + (new Date(invitation.endDate).toLocaleDateString())
+                    + ' Players: '
                     + invitation.numPlayers
-                    + ' '
+                    + ' Accepted: '
                     + invitation.accepted)
                 .appendTo($invitationList);
         });
@@ -102,7 +104,7 @@ $(function() {
         console.log('selected user ids [' + userIds + ']');
         $.ajax({
             type: 'POST',
-            url: '/arena/invitations/create',
+            url: '/arena/invitations/create?accessToken=' + accessToken,
             data: JSON.stringify ({
               "numPlayers": parseInt($('#numPlayers').val()),
               "userIds": userIds
