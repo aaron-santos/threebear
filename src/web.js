@@ -171,6 +171,7 @@ app.get('/arena/invitations', function(req, res) {
                 res.send({
                     "invitations": _.map(results, function(invitation) {
                         return {
+                            "@id": invitation.id,
                             "startDate": invitation.startdate,
                             "endDate": invitation.enddate,
                             "numPlayers": invitation.numplayers,
@@ -207,6 +208,32 @@ app.post('/arena/invitations/create', function(req, res) {
         function(err, results) {
             handleErrorFn(res)(err, results, function() {
                 res.send(201, '');
+            });
+        }
+    );
+});
+
+// Accept invitation
+app.post('/arena/invitations/:id/accept', function(req, res) {
+    var accessToken = req.query.accessToken;
+    var invitationId = req.params.id;
+    async.waterfall([
+        // Get a db client and the current user id
+        function(callback) {
+            async.parallel([
+                getDb,
+                _.partial(getCurrentUserId, accessToken)],
+                callback);
+        },
+        // Get the invitations for this user from the db
+        function(results, callback) {
+            var db = results[0];
+            var userId = results[1];
+            db.acceptInvitation(invitationId, userId, callback);
+        }],
+        function(err, results) {
+            handleErrorFn(res)(err, results, function() {
+                res.send(204, '');
             });
         }
     );

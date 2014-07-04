@@ -39,6 +39,26 @@ function showMainPage() {
     $.getJSON('/arena/invitations?accessToken=' + accessToken, function(invitations) {
         var $invitationList = $('#invitationList');
         _.each(invitations.invitations, function(invitation) {
+            var $accepted;
+            if (!invitation.accepted) {
+                $accepted = $('<span>')
+                    .addClass('invitationAccept glyphicon glyphicon-ok')
+            } else {
+                $accepted = $('<span>')
+                    .addClass('invitationAccept glyphicon glyphicon-ok-circle')
+                    .click(function() {
+                        $.ajax({
+                            type: 'POST',
+                            url: '/arena/invitations/' + invitation['@id'] + '/accept?accessToken=' + accessToken,
+                            data: '',
+                            success: function() {
+                                $accepted
+                                    .removeClass('glyphicon-ok-circle')
+                                    .addClass('glyphicon-ok');
+                            }
+                        });
+                    });
+            }
             $('<div>')
                 .text(
                     'Created: '
@@ -46,9 +66,8 @@ function showMainPage() {
                     + ' Ending: '
                     + (new Date(invitation.endDate).toLocaleDateString())
                     + ' Players: '
-                    + invitation.numPlayers
-                    + ' Accepted: '
-                    + invitation.accepted)
+                    + invitation.numPlayers)
+                .append($accepted)
                 .appendTo($invitationList);
         });
     });
