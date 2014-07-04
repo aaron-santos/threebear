@@ -20,6 +20,7 @@ function signinCallback(authResult) {
 function showUserNameAndAvatar() {
     var $loginInfo = $('#loginInfo');
     $.getJSON('/arena/me?accessToken=' + accessToken, function(me) {
+        window.me = me;
         $('<span>')
             .attr('id', 'userDisplayName')
             .addClass('text-muted')
@@ -35,7 +36,20 @@ function showUserNameAndAvatar() {
 }
 
 function showMainPage() {
-    
+    $.getJSON('/arena/invitations?accessToken=' + accessToken, function(invitations) {
+        var $invitationList = $('#invitationList');
+        _.each(invitations.invitations, function(invitation) {
+            $('<div>')
+                .text(invitation.startDate
+                    + ' '
+                    + invitation.endDate
+                    + ' '
+                    + invitation.numPlayers
+                    + ' '
+                    + invitation.accepted)
+                .appendTo($invitationList);
+        });
+    });
 }
 
 $(function() {
@@ -90,8 +104,8 @@ $(function() {
             type: 'POST',
             url: '/arena/invitations/create',
             data: JSON.stringify ({
-              "num-players": parseInt($('#numPlayers').val()),
-              "user-ids": userIds
+              "numPlayers": parseInt($('#numPlayers').val()),
+              "userIds": userIds
             }),
             success: function(data) { alert('data: ' + data); },
             contentType: "application/json",

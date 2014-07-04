@@ -4,17 +4,29 @@ var bodyParser = require('body-parser');
 var logfmt = require('logfmt');
 var pg = require('pg');
 var _ = require('underscore');
+var googleapis = require('googleapis');
+var async = require('async');
 
 var Db = require('./db');
 
 
 var app = express();
+var OAuth2Client = googleapis.OAuth2Client;
 
 app.use(logfmt.requestLogger());
 app.use(bodyParser.json());
 
-console.log('Connecting to database with DATABASE_URL ['
-    + process.env.DATABASE_URL + ']');
+function handleErrorFn(res) {
+    return function(err, data, callback /*(err, data)*/) {
+        if (err) {
+          console.error(err);
+          res.send({ status: 'error', message: err.message });
+        }
+        else if (callback != null) {
+          callback(null, data);
+        }
+    };
+}
 
 function getCurrentUserId(accessToken, callback /*(err, id)*/) {
     https.get('https://www.googleapis.com/plus/v1/people/me/?fields=id&access_token=' + accessToken, function(gRes){
@@ -26,7 +38,11 @@ function getCurrentUserId(accessToken, callback /*(err, id)*/) {
             var jsonBody = JSON.parse(body);
             console.log('got me results: ' + body);
             
-            callback(null, jsonBody.id);
+            if (jsonBody.error != null) {
+                callback(jsonBody.error, null);
+            } else {
+                callback(null, jsonBody.id);
+            }
         });
         gRes.on('error', function(err) {
             callback(err, null);
@@ -34,114 +50,178 @@ function getCurrentUserId(accessToken, callback /*(err, id)*/) {
     });
 }
 
-pg.connect(process.env.DATABASE_URL, function(err, client) {
-    if (err != null) {
-      console.log(err);
-      return;
-    }
-    console.log('Connected to database');
-    var db = new Db(client);
 
-    // Serve static content from the ./public directory
-    app.use(express.static('public'));
+function getAccessToken(oauth2Client, callback) {
+  // generate consent page url
+  var url = oauth2Client.generateAuthUrl({
+    access_type: 'offline', // will return a refresh token
+    scope: 'https://www.googleapis.com/auth/plus.me'
+  });
 
-    app.get('/clientid', function(req, res) {
-        res.send(process.env.CLIENT_ID);
+  console.log('Visit the url: ', url);
+  rl.question('Enter the code here:', function(code) {
+    // request access token
+    oauth2Client.getToken(code, function(err, tokens) {
+      // set tokens to the client
+      // TODO: tokens should be set by OAuth2 client.
+      oauth2Client.setCredentials(tokens);
+      callback();
     });
+  });
+}
 
-    // API entry point
-    app.get('/arena', function(req, res) {
-        console.log('Got request for /arena');
-        res.send(
-            {
-                "_links": {
-                    "self": {"href": "/arena"},
-                    "games": {"href": "/arena/games"},
-                    "invitations": {"href": "/arena/invitations"},
-                    "friends": {"href": "/arena/friends"},
-                    "me": {"href": "/arena/me"}
-                }
+function getFriends(userId, callback /*(err, friends)*/) {
+    googleapis
+    .discover('plus', 'v1')
+    .execute(function(err, client) {
+        var oauth2Client = new OAuth2Client(
+                process.env.CLIENT_ID,
+                process.env.CLIENT_SECRET,
+                process.env.REDIRECT_URL);
+        getAccessToken(oauth2Client, function() {
+            client.plus.people.list({
+                userId: userId,
+                collection: 'visible'
+            })
+            .withAuthClient(oauth2Client)
+            .execute(callback);
+        });
+    });
+}
+
+function getDb(callback /*(err, db)*/) {
+    pg.connect(process.env.DATABASE_URL, function(err, client) {
+        if (err != null) {
+          console.log(err);
+          callback(err, null);
+        }
+        console.log('Connected to database');
+        var db = new Db(client);
+        callback(null, db);
+    });
+}
+
+
+
+// Serve static content from the ./public directory
+app.use(express.static('public'));
+
+app.get('/clientid', function(req, res) {
+    res.send(process.env.CLIENT_ID);
+});
+
+// API entry point
+app.get('/arena', function(req, res) {
+    console.log('Got request for /arena');
+    res.send(
+        {
+            "_links": {
+                "self": {"href": "/arena"},
+                "games": {"href": "/arena/games"},
+                "invitations": {"href": "/arena/invitations"},
+                "friends": {"href": "/arena/friends"},
+                "me": {"href": "/arena/me"}
             }
-        );
-    });
+        }
+    );
+});
 
-    app.get('/arena/me', function(req, res) {
-        var accessToken = req.query.accessToken;
-        https.get('https://www.googleapis.com/plus/v1/people/me/?fields=displayName%2Cid%2Cimage&access_token=' + accessToken, function(gRes){
-            var body = '';
-            gRes.on('data', function(chunk) {
-                body += chunk;
-            });
-            gRes.on('end', function() {
-                var jsonBody = JSON.parse(body);
-                console.log('got me results: ' + body);
-                
-                res.send({
-                    "name": jsonBody.displayName,
-                    "imageUrl": jsonBody.image.url
-                });
-            });
+app.get('/arena/me', function(req, res) {
+    var accessToken = req.query.accessToken;
+    https.get('https://www.googleapis.com/plus/v1/people/me/?fields=displayName%2Cid%2Cimage&access_token=' + accessToken, function(gRes){
+        var body = '';
+        gRes.on('data', function(chunk) {
+            body += chunk;
         });
-    });
-
-    app.get('/arena/friends', function(req, res) {
-        var accessToken = req.query.accessToken;
-        https.get('https://www.googleapis.com/plus/v1/people/me/people/visible/?access_token=' + accessToken, function(gRes){
-            var body = '';
-            gRes.on('data', function(chunk) {
-                body += chunk;
-            });
-            gRes.on('end', function() {
-                var jsonBody = JSON.parse(body);
-                console.log('got me results: ' + body);
-                
-                res.send({
-                    "users": _.map(jsonBody.items, function(user) {
-                        return {
-                            "@id": user.id,
-                            "name": user.displayName,
-                            "imageUrl": user.image.url
-                        };
-                    })
-                });
-            });
-        });
-    });
-
-
-    // Inivitations collection
-    app.get('/arena/invitations', function(req, res) {
-        var accessToken = req.query.accessToken;
-        db.getInvitations('113479285279093781959', function(err, results) {
-            if (err != null) {
-                console.log(err);
-                res.send(500, err);
-                return;
-            }
-            res.send(
-                {
-                    "invitations": results
-                }
-            );
-        });
-    });
-
-    // Accept new invitations
-    app.post('/arena/invitations/create', function(req, res) {
-        var accessToken = req.query.accessToken;
-        getCurrentUserId(accessToken, function(err, id) {
-            console.log('Got request body ' + JSON.stringify(req.body));
-            db.createInvitation(req.body, function(err) {
-                if (err != null) {
-                    console.log(err);
-                    res.send(500, err);
-                } else {
-                    res.send(201, '');
-                }
+        gRes.on('end', function() {
+            var jsonBody = JSON.parse(body);
+            console.log('got me results: ' + body);
+            
+            res.send({
+                "name": jsonBody.displayName,
+                "imageUrl": jsonBody.image.url
             });
         });
     });
 });
+
+app.get('/arena/friends', function(req, res) {
+    var accessToken = req.query.accessToken;
+    getCurrentUserId(accessToken, function(userId) {
+        getFriends(userId, function(friends) {
+            res.send({
+                "users": _.map(friends.items, function(user) {
+                    return {
+                        "@id": user.id,
+                        "name": user.displayName,
+                        "imageUrl": user.image.url
+                    };
+                })
+            });
+        });
+    });
+});
+
+
+// Inivitations collection
+app.get('/arena/invitations', function(req, res) {
+    var accessToken = req.query.accessToken;
+    async.waterfall([
+        // Get a db client and the current user id
+        function(callback) {
+            async.parallel([
+                getDb,
+                _.partial(getCurrentUserId, accessToken)],
+                callback);
+        },
+        // Get the invitations for this user from the db
+        function(results, callback) {
+            var db = results[0];
+            var userId = results[1];
+            console.log('Getting invitations for user [' + userId + ']');
+            db.getInvitations(userId, callback);
+        }],
+     
+        // Make a response with invitations and send it
+        function(err, results) {
+            handleErrorFn(res)(err, results, function() {
+                res.send({
+                        "invitations": results
+                });
+            });
+        }
+    );
+});
+
+// Accept new invitations
+app.post('/arena/invitations/create', function(req, res) {
+    var accessToken = req.query.accessToken;
+    async.waterfall([
+        // Get a db client and the current user id
+        function(callback) {
+            async.parallel([
+                getDb,
+                _.partial(getCurrentUserId, accessToken)],
+                callback);
+        },
+        // Get the invitations for this user from the db
+        function(results, callback) {
+            var db = results[0];
+            var userId = results[1];
+            // The current user created the invitation, add them as the creator
+            req.body.createdBy = userId;
+            // The current user is implicitly invited, add them to the user id's list
+            req.body.userIds.push(userId);
+            db.createInvitation(req.body, callback);
+        }],
+        function(err, results) {
+            handleErrorFn(res)(err, results, function() {
+                res.send(201, '');
+            });
+        }
+    );
+});
+
 
 var port = Number(process.env.PORT || 5000);
 app.listen(port, function() {

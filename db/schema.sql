@@ -5,6 +5,7 @@ CREATE TABLE invitations (
     startdate date NOT NULL,
     enddate date NOT NULL,
     numplayers int NOT NULL,
+    createdby varchar(25) NOT NULL,
     CHECK (startdate < enddate)
 );
 
